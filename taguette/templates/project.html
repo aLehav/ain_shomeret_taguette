@@ -73,7 +73,7 @@
         <div class="tab-pane fade show active" id="documents" role="tabpanel" aria-labelledby="documents-tab">
           <div class="row">
             <div class="col-md-12">
-              <a class="btn btn-sm btn-primary float-right mb-3" href="javascript:createDocument()">{% trans %}Add a document{% endtrans %}</a>
+              <a class="btn btn-sm btn-primary float-right mb-3" href="javascript:createDocument()">{% trans %}Add documents{% endtrans %}</a>
             </div>
           </div>
           <ul class="list-group list-group-flush" id="documents-list">
@@ -196,7 +196,7 @@
               <input type="text" class="form-control" id="document-add-name" name="document-add-name" placeholder="{% trans "form placeholder" %}Enter a document name{% endtrans %}" />
             </div>
             <div class="col-md-6 form-group">
-              <input type="file" class="form-control-file" id="document-add-file" name="document-add-file" required />
+              <input type="file" class="form-control-file" id="document-add-file" name="document-add-file" multiple webkitdirectory required />
             </div>
           </div>
           <div class="row">

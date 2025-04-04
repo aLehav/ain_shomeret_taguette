@@ -649,57 +649,74 @@ function basename(filename) {
 
 document.getElementById('document-add-form').addEventListener('submit', function(e) {
   e.preventDefault();
-  console.log("Uploading document...");
+  console.log("Uploading documents...");
+  
+  // Get selected files (now may be multiple)
+  var files = document.getElementById('document-add-file').files;
+  if (!files.length) return;
+  var checkSymbol = "\u2713 ";
+  var existingNames = new Set(Object.values(documents).map(doc => doc.name.replace(checkSymbol, "")));
 
-  var form_data = new FormData();
-  var name = document.getElementById('document-add-name').value;
-  if(!name) {
-    name = basename(document.getElementById('document-add-file').value);
-    name = name.substring(0, 50);
-  }
-  form_data.append('name', name);
-  form_data.append('description',
-                   document.getElementById('document-add-description').value);
-  form_data.append('file',
-                   document.getElementById('document-add-file').files[0]);
-  form_data.append('text_direction',
-                   document.getElementById('document-add-form').elements['document-add-direction'].value);
-  form_data.append('_xsrf', getCookie('_xsrf'));
 
-  var xhr = new XMLHttpRequest();
-  xhr.responseType = 'json';
-  xhr.open('POST', base_path + '/api/project/' + project_id + '/document/new');
   showSpinner();
-  xhr.onload = function() {
-    if(xhr.status == 200) {
-      $(document_add_modal).modal('hide');
-      document.getElementById('document-add-form').reset();
-      console.log("Document upload complete");
-      var doc_id = xhr.response.created;
-      var url = base_path + '/project/' + project_id + '/document/' + doc_id;
-      window.history.pushState({document_id: doc_id}, "Document " + doc_id, url);
-      loadDocument(doc_id);
-    } else {
-      console.error("Document upload failed: status", xhr.status);
-      var error = null;
-      try {
-        error = xhr.response.error;
-      } catch(e) {
+  var updatePromises = [];
+
+  for (var i = 0; i < files.length; i++) {
+    (function(file) {
+      var name = document.getElementById('document-add-name').value;
+      if (!name) {
+        name = basename(file.name);
+        name = name.substring(0, 50);
       }
-      if(!error) {
-        error = "Status " + xhr.status;
+
+      if (existingNames.has(name)) {
+        console.log("Skipping existing document:", name);
+        return;
       }
-      alert(gettext("Error uploading file!") + "\n\n" + error);
-    }
-    hideSpinner();
-  };
-  xhr.onerror = function(e) {
-    console.log("Document upload failed:", e);
-    alert(gettext("Error uploading file!"));
-    hideSpinner();
+
+      var form_data = new FormData();
+      form_data.append('name', name);
+      form_data.append('description',
+                       document.getElementById('document-add-description').value);
+      form_data.append('file', file);
+      form_data.append('text_direction',
+         document.getElementById('document-add-form').elements['document-add-direction'].value);
+      form_data.append('_xsrf', getCookie('_xsrf'));
+
+      var xhr = new XMLHttpRequest();
+      xhr.responseType = 'json';
+      xhr.open('POST', base_path + '/api/project/' + project_id + '/document/new');
+
+      updatePromises.push(new Promise(function(resolve, reject) {
+        xhr.onload = function() {
+          if (xhr.status === 200) {
+            console.log("Document upload complete for file", file.name);
+            resolve(xhr.response.created);
+          } else {
+            reject("Error uploading " + file.name + ": status " + xhr.status);
+          }
+        };
+        xhr.onerror = function(e) {
+          reject("Error uploading " + file.name);
+        };
+        xhr.send(form_data);
+      }));
+    })(files[i]);
   }
-  xhr.send(form_data);
+
+  Promise.all(updatePromises).then(function(docIds) {
+    $(document_add_modal).modal('hide');
+    document.getElementById('document-add-form').reset();
+    console.log("All documents uploaded", docIds);
+    updateDocumentsList();  // Refresh list or load one of the documents
+  }).catch(function(error) {
+    console.error(error);
+    alert(gettext("Error uploading one or more files!"));
+  }).finally(function() {
+    hideSpinner();
+  });
 });
+
 
 /*
  * Denote done document
