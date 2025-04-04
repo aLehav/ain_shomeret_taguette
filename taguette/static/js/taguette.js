@@ -724,7 +724,6 @@ function toggleDone(docId) {
   })
   .then(function() {
       console.log("Document update posted for toggleDone");
-      updateDocumentsList();
   })
   .catch(function(error) {
       console.error("Failed to update document:", error);
