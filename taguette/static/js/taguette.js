@@ -559,9 +559,23 @@ function updateDocumentsList() {
   // Fill up the list again
   var before = documents_list.firstChild;
   var entries = Object.entries(documents);
-  sortByKey(entries, function(e) { return e[1].name; });
+  // sortByKey(entries, function(e) { return e[1].name; });
+  var checkSymbol = "\u2713 ";
+  // Sort: done documents (names starting with checkSymbol) move to bottom.
+  entries.sort((a, b) => {
+    let aDone = a[1].name.startsWith(checkSymbol) ? 1 : 0;
+    let bDone = b[1].name.startsWith(checkSymbol) ? 1 : 0;
+    if (aDone !== bDone) {
+      return aDone - bDone; // 0 before 1: not done come first.
+    }
+    // For both done or both not done, compare names (ignoring check mark for done docs).
+    let aName = aDone ? a[1].name.substring(checkSymbol.length) : a[1].name;
+    let bName = bDone ? b[1].name.substring(checkSymbol.length) : b[1].name;
+    return aName.localeCompare(bName);
+  });
   for(var i = 0; i < entries.length; ++i) {
     var doc = entries[i][1];
+    var doneClass = doc.name.startsWith(checkSymbol) ? 'btn-outline-primary' : 'btn-primary';
     var elem = document.createElement('li');
     elem.setAttribute('id', 'document-link-' + doc.id);
     elem.className = 'list-group-item document-link';
@@ -571,6 +585,7 @@ function updateDocumentsList() {
     elem.innerHTML =
       '<div class="d-flex justify-content-between align-items-center">' +
       '  <a class="document-link-a">' + escapeHtml(doc.name) + '</a>' +
+      '    <a href="javascript:toggleDone(' + doc.id + ');" class="btn btn-sm done-button ' + doneClass + '" data-doc-id="' + doc.id + '">' + gettext("\u2713") + '</a> ' +
       '  <a href="javascript:editDocument(' + doc.id + ');" class="btn btn-primary btn-sm">' + gettext("Edit") + '</a>' +
       '</div>';
     documents_list.insertBefore(elem, before);
@@ -686,6 +701,36 @@ document.getElementById('document-add-form').addEventListener('submit', function
   xhr.send(form_data);
 });
 
+/*
+ * Denote done document
+ */
+function toggleDone(docId) {
+  var checkSymbol = "\u2713 "; // Unicode check mark plus a space
+  var doc = documents['' + docId];
+  if (!doc) return;
+  
+  // Toggle the check symbol in the name.
+  if (doc.name.startsWith(checkSymbol)) {
+      doc.name = doc.name.substring(checkSymbol.length);
+  } else {
+      doc.name = checkSymbol + doc.name;
+  }
+  
+  // Update document via API.
+  postJSON('/api/project/' + project_id + '/document/' + docId, {
+      name: doc.name,
+      description: doc.description,
+      text_direction: doc.text_direction
+  })
+  .then(function() {
+      console.log("Document update posted for toggleDone");
+      updateDocumentsList();
+  })
+  .catch(function(error) {
+      console.error("Failed to update document:", error);
+      alert(gettext("Couldn't update document!") + "\n\n" + error);
+  });
+}
 
 /*
  * Change document
