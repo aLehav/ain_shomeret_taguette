@@ -1,0 +1,15 @@
+runtime: custom
+env: flex
+
+entrypoint: taguette --no-browser server config.py
+
+beta_settings:
+  cloud_sql_instances: ain-shomeret-455920:us-central1:ain-shomeret=tcp:5432
+
+resources:
+  cpu: 1
+  memory_gb: 2
+
+automatic_scaling:
+  min_num_instances: 1
+  max_num_instances: 7
